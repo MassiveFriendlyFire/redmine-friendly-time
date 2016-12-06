@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -15,16 +15,38 @@
 
 (function() {
     'use strict';
-    //replace this regex if script is not working
-    var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
 
+
+    //replace this regex if script is not working, it must match A title tags
+    var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
+    //define locale strings
+    var ruStrings = ["ч.", "мин."];
+    var engStrings = ["hour","min"];
+    //default locale is russian
+    var stringsLocale = ruStrings;
+    //detect locale part
+    if (navigator.language !== "ru") {
+        stringsLocale = engStrings;
+    }
+
+    //check site is Redmine
     var metas = document.getElementsByTagName('meta');
     var isRedmine = false;
+    for (var s = 0; s < metas.length; s++) {
+        if (metas[s].getAttribute("name") ==="description") {
+            if (metas[s].getAttribute("content") === "Redmine") {
+                isRedmine = true;
+                break;
+            }
+        }
+    }
+
+    //define methods
     var formatMilliseconds = function(milliseconds) {
         var minutes = parseInt((milliseconds/(1000*60))%60);
         var hours = parseInt((milliseconds/(1000*60*60))%24);
         minutes = (minutes < 10) ? "0" + minutes : minutes;
-        return hours + " ч. " + minutes + " мин.";
+        return hours + " " + stringsLocale[0] + " " + minutes + " " + stringsLocale[1];
     };
     var getMillisecondsIfStringIsDate = function(string) {
         var matches = string.match(mainRegex);
@@ -51,16 +73,6 @@
     };
 
     //Run stage
-    //check site is Redmine
-    for (var s = 0; s < metas.length; s++) {
-        if (metas[s].getAttribute("name") ==="description") {
-            if (metas[s].getAttribute("content") === "Redmine") {
-                isRedmine = true;
-                break;
-            }
-        }
-    }
-
     //iterate links and replace inner html if link matches date time
     if (isRedmine) {
         var links = document.getElementsByTagName("a");
