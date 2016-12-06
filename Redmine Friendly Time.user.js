@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -10,6 +10,7 @@
 
 (function() {
     'use strict';
+    //replace this regex if script is not working
     var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
 
     var metas = document.getElementsByTagName('meta');
