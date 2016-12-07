@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.4.0.1
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
 // @grant        none
 // ==/UserScript==
 
-//Description: 
+//Description:
 //This script replaces time of update in redmine tickets
 //from inaccurate values e.g. "last updated about 2 hours"
 //to accurate values e.g "last updated 2 hours 13 minutes"
