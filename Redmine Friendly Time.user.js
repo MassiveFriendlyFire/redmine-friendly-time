@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.4.0.1
+// @version      0.5
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -20,13 +20,13 @@
     //replace this regex if script is not working, it must match A title tags
     var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
     //define locale strings
-    var ruStrings = ["ч.", "мин."];
-    var engStrings = ["hour","min"];
+    var ruStrings = ["дн.", "ч.", "мин.", "только что"];
+    var engStrings = ["days", "hour","min", "right now"];
     //default locale is russian
-    var stringsLocale = ruStrings;
+    var scriptStrings = ruStrings;
     //detect locale part
     if (navigator.language !== "ru") {
-        stringsLocale = engStrings;
+        scriptStrings = engStrings;
     }
 
     //check site is Redmine
@@ -45,8 +45,22 @@
     var formatMilliseconds = function(milliseconds) {
         var minutes = parseInt((milliseconds/(1000*60))%60);
         var hours = parseInt((milliseconds/(1000*60*60))%24);
+        var days = parseInt(milliseconds/(1000*60*60*24));
         minutes = (minutes < 10) ? "0" + minutes : minutes;
-        return hours + " " + stringsLocale[0] + " " + minutes + " " + stringsLocale[1];
+        var result = "";
+        if (days === 0 && hours === 0 && minutes === 0) {
+            result = scriptStrings[3];
+        } else {
+            if (days > 0) {
+                result = days + " " + scriptStrings[0];
+            }
+            if (days === 0 && hours === 0) {
+                result = minutes + " " + scriptStrings[2];
+            } else {
+                result = result + hours + " " + scriptStrings[1] + " " + minutes + " " + scriptStrings[2];
+            }
+        }
+        return result;
     };
     var getMillisecondsIfStringIsDate = function(string) {
         var matches = string.match(mainRegex);
