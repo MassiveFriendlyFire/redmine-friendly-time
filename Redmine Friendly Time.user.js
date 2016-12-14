@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.5.1
+// @version      0.5.2
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
 // @grant        none
+// @homepageURL  https://github.com/MassiveFriendlyFire/redmine-friendly-time#readme
+// @supportURL   https://github.com/MassiveFriendlyFire/redmine-friendly-time/issues
 // ==/UserScript==
 
 //Description:
