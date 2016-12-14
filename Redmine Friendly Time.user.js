@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.5.1
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -43,7 +43,7 @@
 
     //define methods
     var formatMilliseconds = function(milliseconds) {
-        var minutes = parseInt((milliseconds/(1000*60))%60);
+        var minutes = 1 + parseInt((milliseconds/(1000*60))%60);
         var hours = parseInt((milliseconds/(1000*60*60))%24);
         var days = parseInt(milliseconds/(1000*60*60*24));
         minutes = (minutes < 10) ? "0" + minutes : minutes;
