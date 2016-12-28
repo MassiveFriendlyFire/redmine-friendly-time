@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.5.2
+// @version      0.5.3
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -54,7 +54,7 @@
             result = scriptStrings[3];
         } else {
             if (days > 0) {
-                result = days + " " + scriptStrings[0];
+                result = days + " " + scriptStrings[0] + " ";
             }
             if (days === 0 && hours === 0) {
                 result = minutes + " " + scriptStrings[2];
