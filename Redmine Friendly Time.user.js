@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.5.3
+// @version      0.6.0
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @match        http://*/*
@@ -24,6 +24,7 @@
     //define locale strings
     var ruStrings = ["дн.", "ч.", "мин.", "только что"];
     var engStrings = ["days", "hour","min", "right now"];
+    var isInWork = false;
     //default locale is russian
     var scriptStrings = ruStrings;
     //detect locale part
@@ -87,6 +88,30 @@
         }
         return null;
     };
+    //init data for edit action
+    var initDataForEditAction = function() {
+        var statusAttribute = document.getElementsByClassName("status attribute")[0];
+        var valueDiv;
+        for (var j = 0; j < statusAttribute.children.length; j++) {
+            if (statusAttribute.children[j].className === "value") {
+                valueDiv = statusAttribute.children[j];
+            }
+        }
+        if (valueDiv.innerText === "В работе") {
+            isInWork = true;
+        }
+        var contextualDiv = document.getElementsByClassName("contextual");
+        var editAObjects = [];
+        for (j = 0; j < contextualDiv.length; j++) {
+            for (var k = 0; k < contextualDiv[j].childNodes.length; k++) {
+                if (contextualDiv[j].childNodes[k].innerText === "Редактировать" && contextualDiv[j].childNodes[k].className === "icon icon-edit") {
+                    editAObjects.push(contextualDiv[j].childNodes[k]);
+                }
+            }
+        }
+        //два объекта ссылок редактировать получены, думаем что делать дальше
+        debugger;
+    };
 
     //Run stage
     //iterate links and replace inner html if link matches date time
@@ -99,5 +124,8 @@
                 links[i].innerHTML = formatMilliseconds(milliseconds);
             }
         }
+        initDataForEditAction();
     }
+    //On edit actions
+
 })();
