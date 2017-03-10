@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.6.0
+// @version      0.6
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
-// @match        http://*/*
+// @include      http://redmine.m-games-ltd.com/*
+// @compatible  firefox
 // @grant        none
 // @homepageURL  https://github.com/MassiveFriendlyFire/redmine-friendly-time#readme
 // @supportURL   https://github.com/MassiveFriendlyFire/redmine-friendly-time/issues
@@ -17,16 +18,18 @@
 
 (function() {
     'use strict';
-
+    console.log('ololo');
 
     //replace this regex if script is not working, it must match A title tags
     var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
     //define locale strings
     var ruStrings = ["дн.", "ч.", "мин.", "только что"];
     var engStrings = ["days", "hour","min", "right now"];
-    var isInWork = false;
     //default locale is russian
     var scriptStrings = ruStrings;
+
+    var optionChanged = false;
+
     //detect locale part
     if (navigator.language !== "ru") {
         scriptStrings = engStrings;
@@ -88,30 +91,6 @@
         }
         return null;
     };
-    //init data for edit action
-    var initDataForEditAction = function() {
-        var statusAttribute = document.getElementsByClassName("status attribute")[0];
-        var valueDiv;
-        for (var j = 0; j < statusAttribute.children.length; j++) {
-            if (statusAttribute.children[j].className === "value") {
-                valueDiv = statusAttribute.children[j];
-            }
-        }
-        if (valueDiv.innerText === "В работе") {
-            isInWork = true;
-        }
-        var contextualDiv = document.getElementsByClassName("contextual");
-        var editAObjects = [];
-        for (j = 0; j < contextualDiv.length; j++) {
-            for (var k = 0; k < contextualDiv[j].childNodes.length; k++) {
-                if (contextualDiv[j].childNodes[k].innerText === "Редактировать" && contextualDiv[j].childNodes[k].className === "icon icon-edit") {
-                    editAObjects.push(contextualDiv[j].childNodes[k]);
-                }
-            }
-        }
-        //два объекта ссылок редактировать получены, думаем что делать дальше
-        debugger;
-    };
 
     //Run stage
     //iterate links and replace inner html if link matches date time
@@ -124,8 +103,30 @@
                 links[i].innerHTML = formatMilliseconds(milliseconds);
             }
         }
-        initDataForEditAction();
-    }
-    //On edit actions
 
+        var changeOptionIntervalId = setInterval(function() {
+            console.log('intervalmmm');
+            if (optionChanged) {
+                clearInterval(changeOptionIntervalId);
+            }
+
+            if (document.getElementsByClassName('status attribute')[0].childNodes[1].innerHTML === "Приостановлена") {
+                var findValue;
+                for (int i = 0; i <  document.getElementById('issue_status_id').length; i++) {
+                    if ( document.getElementById('issue_status_id')[i].innerHTML === 'В работе') {
+                        findValue =  document.getElementById('issue_status_id')[i].value;
+                        break;
+                    }
+                }
+                if (findValue !== undefined) {
+                    document.getElementById('issue_status_id')[5].value = findValue;
+                    document.getElementById('issue_status_id')[5].style.background = 'lightgreen';
+                }
+                optionChanged = true;
+                
+            }
+
+
+        }, 200);
+    }
 })();
