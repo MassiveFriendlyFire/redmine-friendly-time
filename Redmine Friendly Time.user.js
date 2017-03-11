@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.6.1
+// @version      0.6.2
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -25,7 +25,18 @@ var engStrings = ["days", "hour","min", "right now"];
 //default locale is russian
 var scriptStrings = ruStrings;
 
-var optionChanged = false;
+//define CONSTS 
+var ISSUE_PAUSED_STR = 'Приостановлена';
+var ISSUE_IN_WORK_STR = 'В работе';
+
+//DOCUMENT CONSTS
+var ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('issue_status_id');
+var ISSUE_STATUS_STR_ELEMENT = document.getElementsByClassName('status attribute')[0].childNodes[1];
+var EDIT_ISSUE_LINKS_PANEL_ELEMENT = document.getElementsByClassName('contextual')[1];
+
+//VARS
+var VO_optionChanged = false;
+var VO_issuePaused = true;
 
 //define methods
 var formatMilliseconds = function(milliseconds) {
@@ -72,31 +83,61 @@ var getMillisecondsIfStringIsDate = function(string) {
     return null;
 };
 
-function toggleTaskStatus() {
-    optionChanged = true;
+function preparedEditIssueStatus() {
+    VO_optionChanged = true;
     var findValue;
-    var toggleFrom = 'Приостановлена';
-    var toggleTo = 'В работе';
-    if (document.getElementsByClassName('status attribute')[0].childNodes[1].innerHTML === toggleTo) {
+    var toggleFrom = ISSUE_PAUSED_STR;
+    var toggleTo = ISSUE_IN_WORK_STR;
+
+    reloadIssueStatus();
+
+    if (!VO_issuePaused) {
         var temp = toggleFrom;
         toggleFrom = toggleTo;
         toggleTo = temp;
     }
 
-    var issueStatusSelect = document.getElementById('issue_status_id');
-    for (var i = 0; i < issueStatusSelect.length; i++) {
-        if (issueStatusSelect[i].innerHTML === toggleTo) {
-            findValue = issueStatusSelect[i].value;
+    for (var i = 0; i < ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT.length; i++) {
+        if (ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT[i].innerHTML === toggleTo) {
+            findValue = ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT[i].value;
             break;
         }
     }
-    issueStatusSelect.value = findValue;
-    issueStatusSelect.style.background = 'lightgreen';
+    ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT.value = findValue;
+    ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT.style.background = 'lightgreen';
     console.log('toggleStatus');
+}
+
+function createTaskEasyToggleHref() {
+    var LINK = document.createElement('a');
+    LINK.id = 'easy-toggle-link';
+    LINK.classList.add('icon');
+    LINK.classList.add('icon-edit');
+    var title1 = 'Взять в работу';
+    var title2 = 'Приостановить';
+    reloadIssueStatus();
+    if (VO_issuePaused) {
+        LINK.innerHTML = title1;
+    } else {
+        LINK.innerHTML = title2;
+    }
+    EDIT_ISSUE_LINKS_PANEL_ELEMENT.prepend(LINK);
+}
+
+function reloadIssueStatus() {
+    if (ISSUE_STATUS_STR_ELEMENT.innerHTML === ISSUE_PAUSED_STR) {
+        VO_issuePaused = true;
+    } else if (ISSUE_STATUS_STR_ELEMENT.innerHTML === ISSUE_IN_WORK_STR) {
+        VO_issuePaused = false;
+    }
 }
 
 //Run stage
 //iterate links and replace inner html if link matches date time
+
+
+
+
 var links = document.getElementsByTagName("a");
 var currentTime = new Date();
 for (var i = 0; i < links.length; i++) {
@@ -108,10 +149,11 @@ for (var i = 0; i < links.length; i++) {
 
 //autochange options values for edit mode
 var changeOptionIntervalId = setInterval(function() {
-    if (optionChanged) {
+    if (VO_optionChanged) {
         clearInterval(changeOptionIntervalId);
         return;
     } 
 
-    toggleTaskStatus();
+    preparedEditIssueStatus();
+    createTaskEasyToggleHref();
 }, 200); 
