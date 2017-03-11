@@ -17,6 +17,14 @@
 //from inaccurate values e.g. "last updated about 2 hours"
 //to accurate values e.g "last updated 2 hours 13 minutes"
 
+//CORE
+var LOGGING_ENABLED = true;
+var MY_LOG = function(value) {
+    if (LOGGING_ENABLED) {
+        console.log(value);
+    }
+};
+
 //replace this regex if script is not working, it must match A title tags
 var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
 //define locale strings
@@ -30,15 +38,19 @@ var ISSUE_PAUSED_STR = 'Приостановлена';
 var ISSUE_IN_WORK_STR = 'В работе';
 
 //DOCUMENT CONSTS
+var REDMINE_FORM_SUMBIT_ELEMENTS = document.getElementsByName('commit');
 var ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('issue_status_id');
 var ISSUE_STATUS_STR_ELEMENT = document.getElementsByClassName('status attribute')[0].childNodes[1];
 var EDIT_ISSUE_LINKS_PANEL_ELEMENT = document.getElementsByClassName('contextual')[1];
+var EDIT_ISSUE_FORM_ELEMENT = document.getElementById('issue-form');
+// i don't need this //var FORM_ISSUE_EDIT_SUBMIT_BUTTON_ELEMENT = loadSubmitElement(EDIT_ISSUE_FORM_ELEMENT);
 
 //VARS
 var VO_optionChanged = false;
 var VO_issuePaused = true;
 
 //define methods
+
 var formatMilliseconds = function(milliseconds) {
     var minutes = 1 + parseInt((milliseconds/(1000*60))%60);
     var hours = parseInt((milliseconds/(1000*60*60))%24);
@@ -105,14 +117,29 @@ function preparedEditIssueStatus() {
     }
     ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT.value = findValue;
     ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT.style.background = 'lightgreen';
-    console.log('toggleStatus');
+    MY_LOG('toggleStatus');
 }
+
+// I don't need this
+// function loadSubmitElement(parentToFind) {
+//     for (var i = 0; i < REDMINE_FORM_SUMBIT_ELEMENTS.length; i++) {
+//         MY_LOG('REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode ' + REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode);
+//         MY_LOG('parentToFind' + parentToFind);
+//         if (REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode === parentToFind) {
+//             MY_LOG('element exist');
+//             return REDMINE_FORM_SUMBIT_ELEMENTS[i];
+//         }
+//     }
+//     MY_LOG('element not exist');
+// }
 
 function createTaskEasyToggleHref() {
     var LINK = document.createElement('a');
     LINK.id = 'easy-toggle-link';
     LINK.classList.add('icon');
     LINK.classList.add('icon-edit');
+    LINK.href = '#';
+
     var title1 = 'Взять в работу';
     var title2 = 'Приостановить';
     reloadIssueStatus();
@@ -122,12 +149,25 @@ function createTaskEasyToggleHref() {
         LINK.innerHTML = title2;
     }
     EDIT_ISSUE_LINKS_PANEL_ELEMENT.prepend(LINK);
+
+    LINK.onclick = function() { easyTaskEasyToggleOnclickAction() };
+    // MY_LOG('Sumbit element is ' + FORM_ISSUE_EDIT_SUBMIT_BUTTON_ELEMENT);
+}
+
+function easyTaskEasyToggleOnclickAction() {
+    MY_LOG('submitting form...');
+    EDIT_ISSUE_FORM_ELEMENT.submit();
 }
 
 function reloadIssueStatus() {
+    MY_LOG('ISSUE_STATUS_STR_ELEMENT.innerHTML ' + ISSUE_STATUS_STR_ELEMENT.innerHTML);
+    MY_LOG('ISSUE_PAUSED_STR ' + ISSUE_PAUSED_STR);
+    MY_LOG('ISSUE_IN_WORK_STR ' + ISSUE_IN_WORK_STR);
     if (ISSUE_STATUS_STR_ELEMENT.innerHTML === ISSUE_PAUSED_STR) {
+        MY_LOG('reloadIssueStatus ' + true);
         VO_issuePaused = true;
     } else if (ISSUE_STATUS_STR_ELEMENT.innerHTML === ISSUE_IN_WORK_STR) {
+        MY_LOG('reloadIssueStatus ' + false);
         VO_issuePaused = false;
     }
 }
