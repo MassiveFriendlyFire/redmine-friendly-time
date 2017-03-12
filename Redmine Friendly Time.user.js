@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.7
+// @version      0.99.8
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
 // @compatible   firefox
+// @compatible   chrome
 // @grant        none
 // @homepageURL  https://github.com/MassiveFriendlyFire/redmine-friendly-time#readme
 // @supportURL   https://github.com/MassiveFriendlyFire/redmine-friendly-time/issues
@@ -271,7 +272,15 @@
 	function easyTaskEasyToggleOnclickAction() {
 		MY_LOG('submitting form...');
 		if (isSimpleSubmitAllowed()) {
-			EDIT_ISSUE_FORM_ELEMENT.submit();
+			if (!VO_issuePaused) {
+				showNotificationPopup('Приостанавливаю задачу с трудозатратами: ' + formatMilliseconds(VO_milliseconds));
+				setTimeout(function() {
+					EDIT_ISSUE_FORM_ELEMENT.submit();
+				}, 1500);
+			} else {
+				EDIT_ISSUE_FORM_ELEMENT.submit();
+			}
+
 		} else {
 			thereIsNotAllAreSimpleWithYourIssue();
 		}
@@ -356,10 +365,14 @@
 	 * external notifications added in CORE section, enjoy
 	 * @param caption
 	 */
-	function showNotificationPopup(caption) {
+	function showNotificationPopup(caption, noTimeout) {
+		var timeout = 750;
+		if (noTimeout) {
+			timeout = 0;
+		}
 		setTimeout(function () {
 			toastr.info(caption)
-		}, 750);
+		}, timeout);
 	}
 
 	/**
@@ -401,6 +414,7 @@
 			prepareEditIssueLabourCosts();
 		}, 1500);
 
+		reloadIssueTimeVars();
 		prepareEditIssueStatus();
 		prepareEditIssueLabourCosts();
 		prepareEditIssueLabourType();
