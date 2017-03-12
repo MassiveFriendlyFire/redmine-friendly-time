@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.8
+// @version      0.99.9
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -218,6 +218,8 @@
 		MY_LOG('prevlabcosts ' + VO_labourCostsPrevValue);
 		if (VO_labourCostsPrevValue !== undefined && EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value !== VO_labourCostsPrevValue) {
 			EDIT_ISSUE_LABOUR_COSTS_ELEMENT.style.background = '';
+			EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT.value = '';
+			EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT.style.background = '';
 			return;
 		}
 
