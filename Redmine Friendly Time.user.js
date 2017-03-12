@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.6.2
+// @version      0.6.3
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -18,7 +18,7 @@
 //to accurate values e.g "last updated 2 hours 13 minutes"
 
 //CORE
-var LOGGING_ENABLED = true;
+var LOGGING_ENABLED = false;
 var MY_LOG = function(value) {
     if (LOGGING_ENABLED) {
         console.log(value);
@@ -43,14 +43,21 @@ var ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('issue_s
 var ISSUE_STATUS_STR_ELEMENT = document.getElementsByClassName('status attribute')[0].childNodes[1];
 var EDIT_ISSUE_LINKS_PANEL_ELEMENT = document.getElementsByClassName('contextual')[1];
 var EDIT_ISSUE_FORM_ELEMENT = document.getElementById('issue-form');
-// i don't need this //var FORM_ISSUE_EDIT_SUBMIT_BUTTON_ELEMENT = loadSubmitElement(EDIT_ISSUE_FORM_ELEMENT);
+var EDIT_ISSUE_LABOUR_COSTS_ELEMENT = document.getElementById('time_entry_hours');
+var EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('time_entry_activity_id');
 
 //VARS
-var VO_optionChanged = false;
+var VO_milliseconds;
+var VO_days;
+var VO_hours;
+var VO_minutes;
+
+var VO_statusChanged = false;
+var VO_labourCostsChanged = false;
+var VO_laboutTypeChanged = false;
 var VO_issuePaused = true;
 
 //define methods
-
 var formatMilliseconds = function(milliseconds) {
     var minutes = 1 + parseInt((milliseconds/(1000*60))%60);
     var hours = parseInt((milliseconds/(1000*60*60))%24);
@@ -95,8 +102,14 @@ var getMillisecondsIfStringIsDate = function(string) {
     return null;
 };
 
-function preparedEditIssueStatus() {
-    VO_optionChanged = true;
+function reloadIssueTimeVars() {
+    VO_minutes = 1 + parseInt((VO_milliseconds/(1000*60))%60);
+    VO_hours = parseInt((VO_milliseconds/(1000*60*60))%24);
+    VO_days = parseInt(VO_milliseconds/(1000*60*60*24));
+}
+
+function prepareEditIssueStatus() {
+    VO_statusChanged = true;
     var findValue;
     var toggleFrom = ISSUE_PAUSED_STR;
     var toggleTo = ISSUE_IN_WORK_STR;
@@ -120,18 +133,27 @@ function preparedEditIssueStatus() {
     MY_LOG('toggleStatus');
 }
 
-// I don't need this
-// function loadSubmitElement(parentToFind) {
-//     for (var i = 0; i < REDMINE_FORM_SUMBIT_ELEMENTS.length; i++) {
-//         MY_LOG('REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode ' + REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode);
-//         MY_LOG('parentToFind' + parentToFind);
-//         if (REDMINE_FORM_SUMBIT_ELEMENTS[i].parentNode === parentToFind) {
-//             MY_LOG('element exist');
-//             return REDMINE_FORM_SUMBIT_ELEMENTS[i];
-//         }
-//     }
-//     MY_LOG('element not exist');
-// }
+function prepareEditIssueLabourCosts() {
+    VO_labourCostsChanged = true;
+    if (VO_minutes === undefined) {
+        reloadIssueTimeVars();
+    }
+    if (VO_issuePaused) {
+        return;
+    }
+    var hoursValue = VO_days * 24 + VO_hours + VO_minutes / 60;
+    EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = hoursValue;
+    EDIT_ISSUE_LABOUR_COSTS_ELEMENT.style.background = 'lightgreen';
+}
+
+function prepareEditIssueLabourType() {
+    VO_laboutTypeChanged = true;
+    if (VO_issuePaused) {
+        return;
+    }
+    EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT.value = 9;
+    EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT.style.background = 'lightgreen';
+}
 
 function createTaskEasyToggleHref() {
     var LINK = document.createElement('a');
@@ -151,7 +173,6 @@ function createTaskEasyToggleHref() {
     EDIT_ISSUE_LINKS_PANEL_ELEMENT.prepend(LINK);
 
     LINK.onclick = function() { easyTaskEasyToggleOnclickAction() };
-    // MY_LOG('Sumbit element is ' + FORM_ISSUE_EDIT_SUBMIT_BUTTON_ELEMENT);
 }
 
 function easyTaskEasyToggleOnclickAction() {
@@ -174,26 +195,27 @@ function reloadIssueStatus() {
 
 //Run stage
 //iterate links and replace inner html if link matches date time
-
-
-
-
 var links = document.getElementsByTagName("a");
 var currentTime = new Date();
 for (var i = 0; i < links.length; i++) {
     var milliseconds = getMillisecondsIfStringIsDate(links[i].title);
     if (milliseconds !== null) {
+        VO_milliseconds = milliseconds;
         links[i].innerHTML = formatMilliseconds(milliseconds);
     }
 }
 
+reloadIssueTimeVars();
+
 //autochange options values for edit mode
-var changeOptionIntervalId = setInterval(function() {
-    if (VO_optionChanged) {
-        clearInterval(changeOptionIntervalId);
+var changeFormValuesIntervalId = setInterval(function() {
+    if (VO_statusChanged) {
+        clearInterval(changeFormValuesIntervalId);
         return;
     } 
 
-    preparedEditIssueStatus();
+    prepareEditIssueStatus();
+    prepareEditIssueLabourCosts();
+    prepareEditIssueLabourType();
     createTaskEasyToggleHref();
 }, 200); 
