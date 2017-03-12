@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.5
+// @version      0.99.6
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -29,8 +29,13 @@
 	toastrCss.rel = 'stylesheet';
 	var toastrJs = document.createElement('script');
 	toastrJs.src = 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js';
+	var FACss = document.createElement('link');
+	FACss.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
+	FACss.rel = 'stylesheet';
+
 	document.head.appendChild(toastrCss);
 	document.head.appendChild(toastrJs);
+	document.head.appendChild(FACss);
 
 	//replace this regex if script is not working, it must match A title tags
 	var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
@@ -236,21 +241,24 @@
 	 * create link for toggle issue between work-paused
 	 */
 	function createTaskEasyToggleHref() {
+		var ICON = document.createElement('i');
+		ICON.classList.add('fa');
 		var LINK = document.createElement('a');
 		LINK.id = 'easy-toggle-link';
-		LINK.classList.add('icon');
-		LINK.classList.add('icon-edit');
 		LINK.href = '#';
 
-		var title1 = 'Взять в работу';
-		var title2 = 'Приостановить';
+		var title1 = '&nbsp;Взять в работу';
+		var title2 = '&nbsp;Приостановить';
 		reloadIssueStatus();
 		if (VO_issuePaused) {
+			ICON.classList.add('fa-play');
 			LINK.innerHTML = title1;
 		} else {
+			ICON.classList.add('fa-pause');
 			LINK.innerHTML = title2;
 		}
 		EDIT_ISSUE_LINKS_PANEL_ELEMENT.prepend(LINK);
+		EDIT_ISSUE_LINKS_PANEL_ELEMENT.prepend(ICON);
 
 		LINK.onclick = function () {
 			easyTaskEasyToggleOnclickAction()
@@ -394,10 +402,10 @@
 	}, 1500);
 
 	//autochange options values for edit mode
-	var changeFormValuesIntervalId = setTimeout(function () {
+	setTimeout(function () {
 		prepareEditIssueStatus();
 		prepareEditIssueLabourCosts();
 		prepareEditIssueLabourType();
 		createTaskEasyToggleHref();
-	}, 1000);
+	}, 600);
 })();
