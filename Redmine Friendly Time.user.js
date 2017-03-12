@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.6.3
+// @version      0.99
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -18,12 +18,19 @@
 //to accurate values e.g "last updated 2 hours 13 minutes"
 
 //CORE
-var LOGGING_ENABLED = false;
+var LOGGING_ENABLED = true;
 var MY_LOG = function(value) {
     if (LOGGING_ENABLED) {
         console.log(value);
     }
 };
+var toastrCss = document.createElement('link');
+toastrCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css';
+toastrCss.rel = 'stylesheet';
+var toastrJs = document.createElement('script');
+toastrJs.src = 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js';
+document.head.appendChild(toastrCss);
+document.head.appendChild(toastrJs);
 
 //replace this regex if script is not working, it must match A title tags
 var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
@@ -37,6 +44,7 @@ var scriptStrings = ruStrings;
 var ISSUE_PAUSED_STR = 'Приостановлена';
 var ISSUE_IN_WORK_STR = 'В работе';
 
+
 //DOCUMENT CONSTS
 var REDMINE_FORM_SUMBIT_ELEMENTS = document.getElementsByName('commit');
 var ISSUE_STATUS_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('issue_status_id');
@@ -45,6 +53,9 @@ var EDIT_ISSUE_LINKS_PANEL_ELEMENT = document.getElementsByClassName('contextual
 var EDIT_ISSUE_FORM_ELEMENT = document.getElementById('issue-form');
 var EDIT_ISSUE_LABOUR_COSTS_ELEMENT = document.getElementById('time_entry_hours');
 var EDIT_ISSUE_LABOUR_TYPE_SELECT_OPTIONS_GROUP_ELEMENT = document.getElementById('time_entry_activity_id');
+var ISSUE_HISTORY_LIST_ELEMENT = document.getElementById('history');
+var ISSUE_HISTORY_LAST_ELEMENT = getHistoryLastElement(ISSUE_HISTORY_LIST_ELEMENT);
+var MY_USER_ID = getMyUserId(document.getElementById('loggedas'));
 
 //VARS
 var VO_milliseconds;
@@ -101,6 +112,30 @@ var getMillisecondsIfStringIsDate = function(string) {
     }
     return null;
 };
+
+function getHistoryLastElement() {
+    var last;
+    if (ISSUE_HISTORY_LIST_ELEMENT.children.length > 0) {
+        last = ISSUE_HISTORY_LIST_ELEMENT.children[ISSUE_HISTORY_LIST_ELEMENT.children.length - 1];
+    } else {
+        MY_LOG('ERROR: Unable to get last history element');
+        return;
+    }
+    if (last.id.indexOf('change') === -1) {
+        MY_LOG('ERROR: Last history element is not a change');
+        return;
+    }
+    return last;
+}
+
+function getMyUserId(loggedAsDiv) {
+    var splitted = loggedAsDiv.children[0].href.split('/');
+    if (splitted.length < 1) {
+        MY_LOG('ERROR: Something wrong with "LOGGED AS" div. Unable to get current user id');
+        return;
+    }
+    return splitted[splitted.length - 1];
+}
 
 function reloadIssueTimeVars() {
     VO_minutes = 1 + parseInt((VO_milliseconds/(1000*60))%60);
@@ -177,7 +212,55 @@ function createTaskEasyToggleHref() {
 
 function easyTaskEasyToggleOnclickAction() {
     MY_LOG('submitting form...');
-    EDIT_ISSUE_FORM_ELEMENT.submit();
+    if (isSimpleSubmitAllowed()) {
+        EDIT_ISSUE_FORM_ELEMENT.submit();
+    } else {
+        thereIsNotAllAreSimpleWithYourIssue();
+    }
+    
+}
+
+function isSimpleSubmitAllowed() {
+    var userHrefValue = ISSUE_HISTORY_LAST_ELEMENT.children[0].children[0].children[2].href;
+    var splitted = userHrefValue.split('/');
+    if (splitted.length < 1) {
+        MY_LOG('ERROR: Something wrong with user href value');
+        return false;
+    }
+    var userId = splitted[splitted.length - 1];
+    MY_LOG('user id = ' + userId);
+    if (userId !== MY_USER_ID) {
+        MY_LOG('DEBUG: User Id mismatch');
+        return false;
+    }
+    if (VO_issuePaused) {
+        return true;
+    }
+    var details = ISSUE_HISTORY_LAST_ELEMENT.children[0].children[1];
+    MY_LOG('details.children.length ' + details.children.length);
+    if (details.children.length < 1) {
+        MY_LOG('Details looks not like status changed message.. Check failed.');
+        return false;
+    }
+    for (var i = 0; i < details.children.length; i++) {
+        var liElement = details.children[i];
+        if (liElement.tagName != 'LI') {
+            MY_LOG('Unable to find status change in last history element... Check failed.');
+            return false;
+        }
+        if (liElement.children[0].innerHTML === 'Статус') {
+            if (liElement.children[2].innerHTML === 'В работе') {
+                MY_LOG('DEBUG: Issue In Work By You and You can Simply Submit');
+                return true;
+            }
+            if (VO_issuePaused) {
+                MY_LOG('DEBUG: Issue Paused and You can Simply Submit');
+                return true;
+            }
+        }
+    }
+    MY_LOG('Unable to find status change in last history element... Check failed.');
+    return false;
 }
 
 function reloadIssueStatus() {
@@ -191,6 +274,22 @@ function reloadIssueStatus() {
         MY_LOG('reloadIssueStatus ' + false);
         VO_issuePaused = false;
     }
+}
+
+function thereIsNotAllAreSimpleWithYourIssue() {
+    MY_LOG('notAllAreSimpleWithYourIssue');
+    showNotificationPopup('Не всё так просто с вашей задачей... Проверьте всё еще разок. Может быть длительность трудозатрат нужно изменить?');
+    EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = roundUpto(EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value, 4);
+    showAndScrollTo("update", "issue_notes"); //REDMINE FUNCTION.
+    return false;
+}
+
+function showNotificationPopup(caption) {
+    setTimeout(function() {toastr.info(caption)}, 250);
+}
+
+function roundUpto(number, upto){
+    return new Number(number).toFixed(upto);
 }
 
 //Run stage
