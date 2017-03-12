@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.6
+// @version      0.99.7
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -64,6 +64,7 @@
 	var ISSUE_HISTORY_LAST_ELEMENT_UPDATE_TIME = ISSUE_HISTORY_LAST_ELEMENT.children[0].children[0].children[3].title;
 
 	//VARS
+	var VO_links = document.getElementsByTagName("a");
 	var VO_milliseconds;
 	var VO_days;
 	var VO_hours;
@@ -72,7 +73,6 @@
 	var VO_currentTime;
 	var VO_labourCostsPrevValue;
 
-	var VO_laboutTypeChanged = false;
 	var VO_issuePaused = true;
 
 	//define methods
@@ -169,6 +169,7 @@
 	 * reload vars for time after last update
 	 */
 	function reloadIssueTimeVars() {
+		VO_currentTime = new Date();
 		VO_milliseconds = getMillisecondsIfStringIsDate(ISSUE_HISTORY_LAST_ELEMENT_UPDATE_TIME);
 		VO_minutes = parseInt((VO_milliseconds / (1000 * 60)) % 60);
 		VO_hours = parseInt((VO_milliseconds / (1000 * 60 * 60)) % 24);
@@ -229,7 +230,6 @@
 	 * set labour type
 	 */
 	function prepareEditIssueLabourType() {
-		VO_laboutTypeChanged = true;
 		if (VO_issuePaused) {
 			return;
 		}
@@ -373,39 +373,37 @@
 	}
 
 	function updateTimes() {
-		for (var i = 0; i < links.length; i++) {
-			var milliseconds = getMillisecondsIfStringIsDate(links[i].title);
+		for (var i = 0; i < VO_links.length; i++) {
+			var milliseconds = getMillisecondsIfStringIsDate(VO_links[i].title);
 			if (milliseconds !== null) {
-				links[i].innerHTML = formatMilliseconds(milliseconds);
+				VO_links[i].innerHTML = formatMilliseconds(milliseconds);
 			}
 		}
 	}
 
 	//Run stage
 	//iterate links and replace inner html if link matches date time
-	var links = document.getElementsByTagName("a");
-	VO_currentTime = new Date();
+	reloadIssueTimeVars();
 	updateTimes();
-
-	var updateLinksIntervalId = setInterval(function() {
-		VO_currentTime = new Date();
-		MY_LOG(VO_currentTime);
-		reloadIssueTimeVars();
-		updateTimes();
-		prepareEditIssueLabourCosts();
-	}, 25000);
-
-	var updateLabourCostsIntervalId = setInterval(function() {
-		VO_currentTime = new Date();
-		reloadIssueTimeVars();
-		prepareEditIssueLabourCosts();
-	}, 1500);
+	createTaskEasyToggleHref();
 
 	//autochange options values for edit mode
 	setTimeout(function () {
+		setInterval(function() {
+			reloadIssueTimeVars();
+			MY_LOG(VO_currentTime);
+			updateTimes();
+			prepareEditIssueLabourCosts();
+		}, 25000);
+
+		setInterval(function() {
+			reloadIssueTimeVars();
+			prepareEditIssueLabourCosts();
+		}, 1500);
+
 		prepareEditIssueStatus();
 		prepareEditIssueLabourCosts();
 		prepareEditIssueLabourType();
-		createTaskEasyToggleHref();
 	}, 600);
+
 })();
