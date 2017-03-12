@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99
+// @version      0.99.1
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -278,14 +278,14 @@ function reloadIssueStatus() {
 
 function thereIsNotAllAreSimpleWithYourIssue() {
     MY_LOG('notAllAreSimpleWithYourIssue');
+    showAndScrollTo("update", "issue_notes"); //REDMINE FUNCTION.
     showNotificationPopup('Не всё так просто с вашей задачей... Проверьте всё еще разок. Может быть длительность трудозатрат нужно изменить?');
     EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = roundUpto(EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value, 4);
-    showAndScrollTo("update", "issue_notes"); //REDMINE FUNCTION.
     return false;
 }
 
 function showNotificationPopup(caption) {
-    setTimeout(function() {toastr.info(caption)}, 250);
+    setTimeout(function() {toastr.info(caption)}, 750);
 }
 
 function roundUpto(number, upto){
