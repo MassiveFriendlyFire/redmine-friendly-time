@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.2
+// @version      0.99.3
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
@@ -36,7 +36,7 @@
 	//replace this regex if script is not working, it must match A title tags
 	var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
 	//define locale strings
-	var ruStrings = ["дн.", "ч.", "мин.", "только что"];
+	var ruStrings = ["дн.", "ч.", "мин.", "только что", 'сек.'];
 	var engStrings = ["days", "hour", "min", "right now"];
 	//default locale is russian
 	var scriptStrings = ruStrings;
@@ -63,6 +63,8 @@
 	var VO_days;
 	var VO_hours;
 	var VO_minutes;
+	var VO_seconds;
+	var VO_currentTime;
 
 	var VO_statusChanged = false;
 	var VO_labourCostsChanged = false;
@@ -76,21 +78,22 @@
 	 * @returns {string}
 	 */
 	var formatMilliseconds = function (milliseconds) {
+		var seconds = Math.round(milliseconds / 1000 % 60) - 1;
 		var minutes = 1 + parseInt((milliseconds / (1000 * 60)) % 60);
 		var hours = parseInt((milliseconds / (1000 * 60 * 60)) % 24);
 		var days = parseInt(milliseconds / (1000 * 60 * 60 * 24));
 		minutes = (minutes < 10) ? "0" + minutes : minutes;
 		var result = "";
 		if (days === 0 && hours === 0 && minutes === 0) {
-			result = scriptStrings[3];
+			result = seconds + ' ' + scriptStrings[4];
 		} else {
 			if (days > 0) {
 				result = days + " " + scriptStrings[0] + " ";
 			}
 			if (days === 0 && hours === 0) {
-				result = minutes + " " + scriptStrings[2];
+				result = minutes + " " + scriptStrings[2] + ' ' + seconds + ' ' + scriptStrings[4];
 			} else {
-				result = result + hours + " " + scriptStrings[1] + " " + minutes + " " + scriptStrings[2];
+				result = result + hours + " " + scriptStrings[1] + " " + minutes + " " + scriptStrings[2]+ ' ' + seconds + ' ' + scriptStrings[4];
 			}
 		}
 		return result;
@@ -112,12 +115,12 @@
 			//check first format: dd.mm.yyyy hh:mm
 			var parsedDate = new Date(year, month, day, hour, minute, second);
 			if (parsedDate.getFullYear() === year || parsedDate.getMonth() == month || parsedDate.getDate() === day || parsedDate.getHours() === hour || parsedDate.getMinutes() === minute) {
-				return Math.abs(currentTime - parsedDate);
+				return Math.abs(VO_currentTime - parsedDate);
 			}
 			//check second format: mm.dd.yyyy hh:mm
 			parsedDate = new Date(year, day - 1, month + 1, hour, minute, second);
 			if (parsedDate.getFullYear() === year || parsedDate.getMonth() == day - 1 || parsedDate.getDate() === month + 1 || parsedDate.getHours() === hour || parsedDate.getMinutes() === minute) {
-				return Math.abs(currentTime - parsedDate);
+				return Math.abs(VO_currentTime - parsedDate);
 			}
 			//not found
 		}
@@ -164,6 +167,7 @@
 		VO_minutes = 1 + parseInt((VO_milliseconds / (1000 * 60)) % 60);
 		VO_hours = parseInt((VO_milliseconds / (1000 * 60 * 60)) % 24);
 		VO_days = parseInt(VO_milliseconds / (1000 * 60 * 60 * 24));
+		VO_seconds = parseInt((VO_milliseconds / 1000) % 60);
 	}
 
 	/**
@@ -205,8 +209,9 @@
 		if (VO_issuePaused) {
 			return;
 		}
-		var hoursValue = VO_days * 24 + VO_hours + VO_minutes / 60;
+		var hoursValue = VO_days * 24 + VO_hours + VO_minutes / 60 + VO_seconds / 3600;
 		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = hoursValue;
+		MY_LOG('seconds ' + VO_seconds);
 		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.style.background = 'lightgreen';
 	}
 
@@ -355,19 +360,29 @@
 		return new Number(number).toFixed(upto);
 	}
 
-	//Run stage
-	//iterate links and replace inner html if link matches date time
-	var links = document.getElementsByTagName("a");
-	var currentTime = new Date();
-	for (var i = 0; i < links.length; i++) {
-		var milliseconds = getMillisecondsIfStringIsDate(links[i].title);
-		if (milliseconds !== null) {
-			VO_milliseconds = milliseconds;
-			links[i].innerHTML = formatMilliseconds(milliseconds);
+	function updateTimes() {
+		for (var i = 0; i < links.length; i++) {
+			var milliseconds = getMillisecondsIfStringIsDate(links[i].title);
+			if (milliseconds !== null) {
+				VO_milliseconds = milliseconds;
+				links[i].innerHTML = formatMilliseconds(milliseconds);
+			}
 		}
 	}
 
-	reloadIssueTimeVars();
+	//Run stage
+	//iterate links and replace inner html if link matches date time
+	var links = document.getElementsByTagName("a");
+	VO_currentTime = new Date();
+	updateTimes();
+
+	setInterval(function() {
+		VO_currentTime = new Date();
+		MY_LOG(VO_currentTime);
+		reloadIssueTimeVars();
+		updateTimes();
+		prepareEditIssueLabourCosts();
+	}, 1000);
 
 	//autochange options values for edit mode
 	var changeFormValuesIntervalId = setInterval(function () {
