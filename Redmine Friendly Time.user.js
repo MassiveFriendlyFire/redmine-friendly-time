@@ -1,12 +1,11 @@
 // ==UserScript==
 // @name         Redmine Friendly Time
 // @namespace    http://tampermonkey.net/
-// @version      0.99.3
+// @version      0.99.5
 // @description  Redmine shows friendly time in tickets
 // @author       Massive Friendly Fire
 // @include      http://redmine.m-games-ltd.com/*
 // @compatible   firefox
-// @compatible   chrome
 // @grant        none
 // @homepageURL  https://github.com/MassiveFriendlyFire/redmine-friendly-time#readme
 // @supportURL   https://github.com/MassiveFriendlyFire/redmine-friendly-time/issues
@@ -19,7 +18,7 @@
 
 (function () {
 	//CORE
-	var LOGGING_ENABLED = true;
+	var LOGGING_ENABLED = false;
 	var MY_LOG = function (value) {
 		if (LOGGING_ENABLED) {
 			console.log(value);
@@ -36,7 +35,7 @@
 	//replace this regex if script is not working, it must match A title tags
 	var mainRegex = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/;
 	//define locale strings
-	var ruStrings = ["дн.", "ч.", "мин.", "только что", 'сек.'];
+	var ruStrings = ["дн.", "ч.", "мин.", "меньше 1 минуты", 'сек.'];
 	var engStrings = ["days", "hour", "min", "right now"];
 	//default locale is russian
 	var scriptStrings = ruStrings;
@@ -57,6 +56,7 @@
 	var ISSUE_HISTORY_LIST_ELEMENT = document.getElementById('history');
 	var ISSUE_HISTORY_LAST_ELEMENT = getHistoryLastElement(ISSUE_HISTORY_LIST_ELEMENT);
 	var MY_USER_ID = getMyUserId(document.getElementById('loggedas'));
+	var ISSUE_HISTORY_LAST_ELEMENT_UPDATE_TIME = ISSUE_HISTORY_LAST_ELEMENT.children[0].children[0].children[3].title;
 
 	//VARS
 	var VO_milliseconds;
@@ -65,9 +65,8 @@
 	var VO_minutes;
 	var VO_seconds;
 	var VO_currentTime;
+	var VO_labourCostsPrevValue;
 
-	var VO_statusChanged = false;
-	var VO_labourCostsChanged = false;
 	var VO_laboutTypeChanged = false;
 	var VO_issuePaused = true;
 
@@ -79,13 +78,13 @@
 	 */
 	var formatMilliseconds = function (milliseconds) {
 		var seconds = Math.round(milliseconds / 1000 % 60) - 1;
-		var minutes = 1 + parseInt((milliseconds / (1000 * 60)) % 60);
+		var minutes = parseInt((milliseconds / (1000 * 60)) % 60);
 		var hours = parseInt((milliseconds / (1000 * 60 * 60)) % 24);
 		var days = parseInt(milliseconds / (1000 * 60 * 60 * 24));
 		minutes = (minutes < 10) ? "0" + minutes : minutes;
 		var result = "";
-		if (days === 0 && hours === 0 && minutes === 0) {
-			result = seconds + ' ' + scriptStrings[4];
+		if (days < 1 && hours < 1 && minutes < 1) {
+			result = scriptStrings[3];
 		} else {
 			if (days > 0) {
 				result = days + " " + scriptStrings[0] + " ";
@@ -96,6 +95,7 @@
 				result = result + hours + " " + scriptStrings[1] + " " + minutes + " " + scriptStrings[2]+ ' ' + seconds + ' ' + scriptStrings[4];
 			}
 		}
+		MY_LOG('result = ' + result);
 		return result;
 	};
 	/**
@@ -164,7 +164,8 @@
 	 * reload vars for time after last update
 	 */
 	function reloadIssueTimeVars() {
-		VO_minutes = 1 + parseInt((VO_milliseconds / (1000 * 60)) % 60);
+		VO_milliseconds = getMillisecondsIfStringIsDate(ISSUE_HISTORY_LAST_ELEMENT_UPDATE_TIME);
+		VO_minutes = parseInt((VO_milliseconds / (1000 * 60)) % 60);
 		VO_hours = parseInt((VO_milliseconds / (1000 * 60 * 60)) % 24);
 		VO_days = parseInt(VO_milliseconds / (1000 * 60 * 60 * 24));
 		VO_seconds = parseInt((VO_milliseconds / 1000) % 60);
@@ -174,7 +175,6 @@
 	 * set status
 	 */
 	function prepareEditIssueStatus() {
-		VO_statusChanged = true;
 		var findValue;
 		var toggleFrom = ISSUE_PAUSED_STR;
 		var toggleTo = ISSUE_IN_WORK_STR;
@@ -202,16 +202,21 @@
 	 * set labour costs
 	 */
 	function prepareEditIssueLabourCosts() {
-		VO_labourCostsChanged = true;
 		if (VO_minutes === undefined) {
 			reloadIssueTimeVars();
 		}
 		if (VO_issuePaused) {
 			return;
 		}
+		MY_LOG('prevlabcosts ' + VO_labourCostsPrevValue);
+		if (VO_labourCostsPrevValue !== undefined && EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value !== VO_labourCostsPrevValue) {
+			EDIT_ISSUE_LABOUR_COSTS_ELEMENT.style.background = '';
+			return;
+		}
+
 		var hoursValue = VO_days * 24 + VO_hours + VO_minutes / 60 + VO_seconds / 3600;
-		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = hoursValue;
-		MY_LOG('seconds ' + VO_seconds);
+		VO_labourCostsPrevValue = roundUpto(hoursValue, 5);
+		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = VO_labourCostsPrevValue;
 		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.style.background = 'lightgreen';
 	}
 
@@ -336,7 +341,6 @@
 		MY_LOG('notAllAreSimpleWithYourIssue');
 		showAndScrollTo("update", "issue_notes"); //REDMINE FUNCTION.
 		showNotificationPopup('Не всё так просто с вашей задачей... Проверьте всё еще разок. Может быть длительность трудозатрат нужно изменить?');
-		EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value = roundUpto(EDIT_ISSUE_LABOUR_COSTS_ELEMENT.value, 4);
 		return false;
 	}
 
@@ -364,7 +368,6 @@
 		for (var i = 0; i < links.length; i++) {
 			var milliseconds = getMillisecondsIfStringIsDate(links[i].title);
 			if (milliseconds !== null) {
-				VO_milliseconds = milliseconds;
 				links[i].innerHTML = formatMilliseconds(milliseconds);
 			}
 		}
@@ -376,24 +379,25 @@
 	VO_currentTime = new Date();
 	updateTimes();
 
-	setInterval(function() {
+	var updateLinksIntervalId = setInterval(function() {
 		VO_currentTime = new Date();
 		MY_LOG(VO_currentTime);
 		reloadIssueTimeVars();
 		updateTimes();
 		prepareEditIssueLabourCosts();
-	}, 1000);
+	}, 25000);
+
+	var updateLabourCostsIntervalId = setInterval(function() {
+		VO_currentTime = new Date();
+		reloadIssueTimeVars();
+		prepareEditIssueLabourCosts();
+	}, 1500);
 
 	//autochange options values for edit mode
-	var changeFormValuesIntervalId = setInterval(function () {
-		if (VO_statusChanged) {
-			clearInterval(changeFormValuesIntervalId);
-			return;
-		}
-
+	var changeFormValuesIntervalId = setTimeout(function () {
 		prepareEditIssueStatus();
 		prepareEditIssueLabourCosts();
 		prepareEditIssueLabourType();
 		createTaskEasyToggleHref();
-	}, 200);
+	}, 1000);
 })();
